@@ -1,0 +1,50 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.HurleySk/ado-search-mcp",
+  "description": "MCP server that wraps the ado-search CLI for Azure DevOps work item search and management",
+  "repository": {
+    "url": "https://github.com/HurleySk/ado-search-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "ado-search-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "tools": [
+        { "name": "ado_search", "description": "Full-text search of indexed Azure DevOps work items and wiki pages" },
+        { "name": "ado_grep", "description": "Regex pattern search across work item fields" },
+        { "name": "ado_children", "description": "List children/descendants of a work item" },
+        { "name": "ado_show", "description": "Show full content of a work item or wiki page" },
+        { "name": "ado_list_links", "description": "List links on a work item (live from ADO)" },
+        { "name": "ado_list_comments", "description": "List comments on a work item (live from ADO)" },
+        { "name": "ado_fetch", "description": "Fetch specific work items by ID into local store" },
+        { "name": "ado_create", "description": "Create a new work item in Azure DevOps" },
+        { "name": "ado_update", "description": "Update an existing work item" },
+        { "name": "ado_add_comment", "description": "Add a comment to a work item" },
+        { "name": "ado_add_link", "description": "Add a link between two work items" },
+        { "name": "ado_remove_link", "description": "Remove a link between two work items" }
+      ],
+      "environmentVariables": [
+        {
+          "name": "ADO_SEARCH_CONFIG",
+          "description": "Path to ado-search-mcp.json config file",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "ADO_DATA_DIR",
+          "description": "Path to ado-search data directory (fallback if no config file)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
