@@ -80,7 +80,7 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
     async (params) => {
       const args = ["grep", params.pattern, "--format", "json", "--limit", String(params.limit)];
       if (params.ignore_case) args.push("-i");
-      if (params.context_chars !== 60) args.push("-C", String(params.context_chars));
+      args.push("-C", String(params.context_chars));
       if (params.fields) {
         for (const f of params.fields) args.push("--field", f);
       }

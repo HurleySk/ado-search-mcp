@@ -63,14 +63,7 @@ export function parseJsonOutput(result: CliResult): unknown {
 }
 
 function isNoResults(result: CliResult): boolean {
-  if (result.exitCode !== 1) return false;
-  const combined = (result.stdout + result.stderr).toLowerCase();
-  return (
-    combined.includes("no results") ||
-    combined.includes("no matches") ||
-    combined.includes("no children") ||
-    combined.includes("no items")
-  );
+  return result.exitCode === 1 && result.stderr.trim() === "";
 }
 
 export function toMcpResult(data: unknown) {
