@@ -11,6 +11,7 @@ function addOptionalFilters(
     area_filter?: string;
     assigned_to?: string;
     tag_filter?: string;
+    project?: string;
   },
 ): void {
   if (params.type_filter) args.push("--type", params.type_filter);
@@ -18,6 +19,7 @@ function addOptionalFilters(
   if (params.area_filter) args.push("--area", params.area_filter);
   if (params.assigned_to) args.push("--assigned-to", params.assigned_to);
   if (params.tag_filter) args.push("--tag", params.tag_filter);
+  if (params.project) args.push("--project", params.project);
 }
 
 const FILTER_SCHEMAS = {
@@ -26,6 +28,7 @@ const FILTER_SCHEMAS = {
   area_filter: z.string().optional().describe("Filter by area path (prefix match)"),
   assigned_to: z.string().optional().describe("Filter by assignee email"),
   tag_filter: z.string().optional().describe("Filter by tag"),
+  project: z.string().optional().describe("Filter by Azure DevOps project name (requires ado-search >= 1.14)"),
 };
 
 export function registerTools(server: McpServer, config: AdoSearchConfig): void {

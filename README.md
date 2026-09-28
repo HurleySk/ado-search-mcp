@@ -19,6 +19,8 @@ MCP server that wraps the [ado-search](https://github.com/HurleySk/ado-search) C
 | `ado_add_link` | Add a link between two work items |
 | `ado_remove_link` | Remove a link between two work items |
 
+`ado_search` and `ado_grep` accept an optional `project` filter for data dirs that sync several projects (ado-search >= 1.14).
+
 ## Prerequisites
 
 - Node.js 18+
