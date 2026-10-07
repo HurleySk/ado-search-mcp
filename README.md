@@ -21,6 +21,8 @@ MCP server that wraps the [ado-search](https://github.com/HurleySk/ado-search) C
 
 `ado_search` and `ado_grep` accept an optional `project` filter for data dirs that sync several projects (ado-search >= 1.14).
 
+`ado_add_comment` turns `@Display Name` and `@email` tags into ADO mentions and refuses to post when a tag is unknown or names several people (ado-search >= 1.15). A tag may start the comment. Write `&#64;` for a literal `@`, or pass `resolve_mentions: false` to post the text as-is. HTML values (comment text, description, acceptance criteria) reach the CLI through a temp file, so text starting with `@` or `-` is safe.
+
 ## Prerequisites
 
 - Node.js 18+

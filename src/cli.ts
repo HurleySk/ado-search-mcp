@@ -66,6 +66,11 @@ function isNoResults(result: CliResult): boolean {
   return result.exitCode === 1 && result.stderr.trim() === "";
 }
 
+/** stdout plus any stderr notes (e.g. the CLI's mention report) from a successful run. */
+export function cliOutput(result: CliResult): string {
+  return [result.stderr.trim(), result.stdout.trim()].filter(Boolean).join("\n");
+}
+
 export function toMcpResult(data: unknown) {
   return {
     content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],

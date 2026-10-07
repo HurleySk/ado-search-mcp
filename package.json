@@ -1,6 +1,6 @@
 {
   "name": "ado-search-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCP server that wraps the ado-search CLI for Azure DevOps work item search",
   "license": "MIT",
   "author": "HurleySk",

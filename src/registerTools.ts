@@ -1,7 +1,34 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { AdoSearchConfig } from "./config.js";
-import { runAdoSearch, parseJsonOutput, toMcpResult, toMcpText, toMcpError } from "./cli.js";
+import { runAdoSearch, parseJsonOutput, cliOutput, toMcpResult, toMcpText, toMcpError } from "./cli.js";
+
+/**
+ * Hands HTML values to the CLI as @file references, so text that starts with
+ * "@" (a mention) or "-" is never read as a file path or an option, and long
+ * HTML stays under the Windows command-line length limit.
+ */
+async function withTextFiles<T>(
+  values: Record<string, string | undefined>,
+  fn: (refs: Record<string, string>) => Promise<T>,
+): Promise<T> {
+  const dir = await mkdtemp(join(tmpdir(), "ado-search-mcp-"));
+  try {
+    const refs: Record<string, string> = {};
+    for (const [key, value] of Object.entries(values)) {
+      if (!value) continue;
+      const path = join(dir, `${key}.html`);
+      await writeFile(path, value, "utf8");
+      refs[key] = `@${path}`;
+    }
+    return await fn(refs);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
 
 function addOptionalFilters(
   args: string[],
@@ -227,8 +254,6 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
     },
     async (params) => {
       const args = ["create", "--type", params.type, "--title", params.title];
-      if (params.description) args.push("--description", params.description);
-      if (params.acceptance_criteria) args.push("--acceptance-criteria", params.acceptance_criteria);
       if (params.state) args.push("--state", params.state);
       if (params.reason) args.push("--reason", params.reason);
       if (params.area) args.push("--area", params.area);
@@ -244,9 +269,16 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
         }
       }
       try {
-        const result = await runAdoSearch(config, args, { timeout: 120_000 });
+        const result = await withTextFiles(
+          { description: params.description, acceptance_criteria: params.acceptance_criteria },
+          (refs) => {
+            if (refs.description) args.push("--description", refs.description);
+            if (refs.acceptance_criteria) args.push("--acceptance-criteria", refs.acceptance_criteria);
+            return runAdoSearch(config, args, { timeout: 120_000 });
+          },
+        );
         if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
-        return toMcpText(result.stdout);
+        return toMcpText(cliOutput(result));
       } catch (err) {
         return toMcpError(String(err));
       }
@@ -279,8 +311,6 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
       if (params.title) args.push("--title", params.title);
       if (params.state) args.push("--state", params.state);
       if (params.reason) args.push("--reason", params.reason);
-      if (params.description) args.push("--description", params.description);
-      if (params.acceptance_criteria) args.push("--acceptance-criteria", params.acceptance_criteria);
       if (params.area) args.push("--area", params.area);
       if (params.iteration) args.push("--iteration", params.iteration);
       if (params.assigned_to) args.push("--assigned-to", params.assigned_to);
@@ -293,9 +323,16 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
         }
       }
       try {
-        const result = await runAdoSearch(config, args, { timeout: 120_000 });
+        const result = await withTextFiles(
+          { description: params.description, acceptance_criteria: params.acceptance_criteria },
+          (refs) => {
+            if (refs.description) args.push("--description", refs.description);
+            if (refs.acceptance_criteria) args.push("--acceptance-criteria", refs.acceptance_criteria);
+            return runAdoSearch(config, args, { timeout: 120_000 });
+          },
+        );
         if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
-        return toMcpText(result.stdout);
+        return toMcpText(cliOutput(result));
       } catch (err) {
         return toMcpError(String(err));
       }
@@ -304,20 +341,32 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
 
   server.tool(
     "ado_add_comment",
-    "Add a comment to a work item",
+    "Add a comment to a work item. Tag people with @Display Name or @email; each tag becomes an ADO mention that notifies the person.",
     {
       work_item_id: z.number().int().describe("Work item ID"),
-      text: z.string().min(1).describe("Comment text (HTML supported)"),
+      text: z
+        .string()
+        .min(1)
+        .describe(
+          "Comment text (HTML supported). Tag people with @Display Name or @email, e.g. " +
+            '"@Jane Doe (CTR), please retest"; a tag may start the text. If a tag is unknown or ' +
+            "names several people, nothing is posted and the error lists the candidates. " +
+            "Write &#64; for a literal @.",
+        ),
+      resolve_mentions: z
+        .boolean()
+        .optional()
+        .describe("Set false to post the text as-is without converting @tags to mentions (default true)"),
     },
     async (params) => {
       try {
-        const result = await runAdoSearch(
-          config,
-          ["add-comment", String(params.work_item_id), params.text],
-          { timeout: 120_000 },
-        );
+        const result = await withTextFiles({ text: params.text }, (refs) => {
+          const args = ["add-comment", String(params.work_item_id), refs.text];
+          args.push(params.resolve_mentions === false ? "--no-mentions" : "--strict-mentions");
+          return runAdoSearch(config, args, { timeout: 120_000 });
+        });
         if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
-        return toMcpText(result.stdout);
+        return toMcpText(cliOutput(result));
       } catch (err) {
         return toMcpError(String(err));
       }
