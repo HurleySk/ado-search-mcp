@@ -6,12 +6,12 @@
     "url": "https://github.com/HurleySk/ado-search-mcp",
     "source": "github"
   },
-  "version": "0.4.0",
+  "version": "0.5.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "ado-search-mcp",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "transport": {
         "type": "stdio"
       },
@@ -22,6 +22,7 @@
         { "name": "ado_show", "description": "Show full content of a work item or wiki page" },
         { "name": "ado_list_links", "description": "List links on a work item (live from ADO)" },
         { "name": "ado_list_comments", "description": "List comments on a work item, with their ids (live from ADO)" },
+        { "name": "ado_get_fields", "description": "Read raw work item field values as JSON, HTML intact (live from ADO)" },
         { "name": "ado_fetch", "description": "Fetch specific work items by ID into local store" },
         { "name": "ado_create", "description": "Create a new work item in Azure DevOps" },
         { "name": "ado_update", "description": "Update an existing work item" },

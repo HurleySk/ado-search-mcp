@@ -207,6 +207,33 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
   );
 
   server.tool(
+    "ado_get_fields",
+    "Read raw field values of a work item live from Azure DevOps as JSON {field: value}. Description and " +
+      "acceptance criteria keep their HTML (ado_show strips it), so use this before editing them with ado_update.",
+    {
+      work_item_id: z.number().int().describe("Work item ID"),
+      fields: z
+        .array(z.string().min(1))
+        .optional()
+        .describe(
+          "Field reference names, e.g. System.Description (default: type, title, state, assignee, tags, " +
+            "story points, description, acceptance criteria). Identity fields return the email; empty fields return null.",
+        ),
+    },
+    async (params) => {
+      const args = ["get-fields", String(params.work_item_id)];
+      for (const f of params.fields ?? []) args.push("--field", f);
+      try {
+        const result = await runAdoSearch(config, args, { timeout: 120_000 });
+        if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
+        return toMcpText(result.stdout);
+      } catch (err) {
+        return toMcpError(String(err));
+      }
+    },
+  );
+
+  server.tool(
     "ado_fetch",
     "Fetch specific work items by ID from Azure DevOps and add to local store",
     {

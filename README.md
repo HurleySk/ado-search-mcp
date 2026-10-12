@@ -12,6 +12,7 @@ MCP server that wraps the [ado-search](https://github.com/HurleySk/ado-search) C
 | `ado_show` | Show full content of a work item or wiki page |
 | `ado_list_links` | List links on a work item (live from ADO) |
 | `ado_list_comments` | List comments on a work item, with their ids (live from ADO) |
+| `ado_get_fields` | Read raw field values as JSON, HTML intact (live from ADO) |
 | `ado_fetch` | Fetch specific work items by ID into local store |
 | `ado_create` | Create a new work item |
 | `ado_update` | Update an existing work item |
@@ -23,6 +24,8 @@ MCP server that wraps the [ado-search](https://github.com/HurleySk/ado-search) C
 `ado_search` and `ado_grep` accept an optional `project` filter for data dirs that sync several projects (ado-search >= 1.14).
 
 `ado_add_comment` turns `@Display Name` and `@email` tags into ADO mentions and refuses to post when a tag is unknown or names several people (ado-search >= 1.15). A tag may start the comment. Write `&#64;` for a literal `@`, or pass `resolve_mentions: false` to post the text as-is. `ado_edit_comment` takes a `comment_id` from `ado_list_comments` and handles text and mentions the same way (ado-search >= 1.16). HTML values (comment text, description, acceptance criteria) reach the CLI through a temp file, so text starting with `@` or `-` is safe.
+
+`ado_get_fields` returns `{field: value}` JSON for an optional `fields` list of reference names (default: type, title, state, assignee, tags, story points, description, acceptance criteria). Description and acceptance criteria keep their HTML, which `ado_show` strips, so read them here before editing with `ado_update`. Identity fields return the email; empty fields return `null` (ado-search >= 1.17).
 
 ## Prerequisites
 
