@@ -6,12 +6,12 @@
     "url": "https://github.com/HurleySk/ado-search-mcp",
     "source": "github"
   },
-  "version": "0.3.0",
+  "version": "0.4.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "ado-search-mcp",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "transport": {
         "type": "stdio"
       },
@@ -21,11 +21,12 @@
         { "name": "ado_children", "description": "List children/descendants of a work item" },
         { "name": "ado_show", "description": "Show full content of a work item or wiki page" },
         { "name": "ado_list_links", "description": "List links on a work item (live from ADO)" },
-        { "name": "ado_list_comments", "description": "List comments on a work item (live from ADO)" },
+        { "name": "ado_list_comments", "description": "List comments on a work item, with their ids (live from ADO)" },
         { "name": "ado_fetch", "description": "Fetch specific work items by ID into local store" },
         { "name": "ado_create", "description": "Create a new work item in Azure DevOps" },
         { "name": "ado_update", "description": "Update an existing work item" },
         { "name": "ado_add_comment", "description": "Add a comment to a work item" },
+        { "name": "ado_edit_comment", "description": "Replace the text of a comment on a work item" },
         { "name": "ado_add_link", "description": "Add a link between two work items" },
         { "name": "ado_remove_link", "description": "Remove a link between two work items" }
       ],

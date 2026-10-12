@@ -189,7 +189,7 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
 
   server.tool(
     "ado_list_comments",
-    "List comments on a work item (fetched live from Azure DevOps)",
+    "List comments on a work item with each comment's id (fetched live from Azure DevOps)",
     {
       work_item_id: z.number().int().describe("Work item ID"),
     },
@@ -362,6 +362,40 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
       try {
         const result = await withTextFiles({ text: params.text }, (refs) => {
           const args = ["add-comment", String(params.work_item_id), refs.text];
+          args.push(params.resolve_mentions === false ? "--no-mentions" : "--strict-mentions");
+          return runAdoSearch(config, args, { timeout: 120_000 });
+        });
+        if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
+        return toMcpText(cliOutput(result));
+      } catch (err) {
+        return toMcpError(String(err));
+      }
+    },
+  );
+
+  server.tool(
+    "ado_edit_comment",
+    "Replace the text of an existing comment on a work item. Get the comment id from ado_list_comments. @tags become mentions as in ado_add_comment.",
+    {
+      work_item_id: z.number().int().describe("Work item ID"),
+      comment_id: z.number().int().describe("Comment ID (shown by ado_list_comments)"),
+      text: z
+        .string()
+        .min(1)
+        .describe(
+          "New comment text (HTML supported); replaces the whole comment. @tags work as in " +
+            "ado_add_comment; if a tag is unknown or names several people, nothing is changed. " +
+            "Write &#64; for a literal @.",
+        ),
+      resolve_mentions: z
+        .boolean()
+        .optional()
+        .describe("Set false to save the text as-is without converting @tags to mentions (default true)"),
+    },
+    async (params) => {
+      try {
+        const result = await withTextFiles({ text: params.text }, (refs) => {
+          const args = ["edit-comment", String(params.work_item_id), String(params.comment_id), refs.text];
           args.push(params.resolve_mentions === false ? "--no-mentions" : "--strict-mentions");
           return runAdoSearch(config, args, { timeout: 120_000 });
         });
