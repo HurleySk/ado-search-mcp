@@ -16,3 +16,27 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+
+  release:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create a GitHub release when package.json carries an untagged version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$(node -p 'require("./package.json").version')"
+          if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            echo "Tag $TAG already exists"
+            exit 0
+          fi
+          PREV=$(git describe --tags --abbrev=0 2> /dev/null || true)
+          git log --format='- %s' ${PREV:+$PREV..}HEAD > notes.md
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md
