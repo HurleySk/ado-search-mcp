@@ -234,6 +234,34 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
   );
 
   server.tool(
+    "ado_mentions",
+    "List comments that @mention you (the authenticated user), newest first, live from Azure DevOps. Covers " +
+      "the last 30 days (WIQL @RecentMentions). Each record shows the work item id, title, state, type and " +
+      "assignee, then the comment id, author, created date (UTC) and plain text with mentions as @Name.",
+    {
+      since: z
+        .string()
+        .min(1)
+        .optional()
+        .describe("Keep only comments created or modified after this ISO datetime, UTC (e.g. 2026-10-15T00:00:00Z)"),
+      limit: z.number().int().min(1).max(500).default(50).describe("Max comments"),
+      include_own: z.boolean().default(false).describe("Keep comments you wrote yourself (dropped by default)"),
+    },
+    async (params) => {
+      const args = ["mentions", "--limit", String(params.limit)];
+      if (params.since) args.push("--since", params.since);
+      if (params.include_own) args.push("--include-own");
+      try {
+        const result = await runAdoSearch(config, args, { timeout: 180_000 });
+        if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
+        return toMcpText(cliOutput(result));
+      } catch (err) {
+        return toMcpError(String(err));
+      }
+    },
+  );
+
+  server.tool(
     "ado_fetch",
     "Fetch specific work items by ID from Azure DevOps and add to local store",
     {
