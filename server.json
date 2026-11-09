@@ -6,12 +6,12 @@
     "url": "https://github.com/HurleySk/ado-search-mcp",
     "source": "github"
   },
-  "version": "0.6.0",
+  "version": "0.7.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "ado-search-mcp",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "transport": {
         "type": "stdio"
       },
@@ -24,6 +24,14 @@
         { "name": "ado_list_comments", "description": "List comments on a work item, with their ids (live from ADO)" },
         { "name": "ado_get_fields", "description": "Read raw work item field values as JSON, HTML intact (live from ADO)" },
         { "name": "ado_mentions", "description": "List comments that @mention you, newest first (live from ADO)" },
+        { "name": "ado_test_plans", "description": "List test plans with owner, area, iteration, dates (live from ADO)" },
+        { "name": "ado_test_suites", "description": "List a test plan's suite tree (live from ADO)" },
+        { "name": "ado_test_cases", "description": "List a suite's test cases with steps and testers (live from ADO)" },
+        { "name": "ado_test_points", "description": "List a suite's test points with latest outcomes (live from ADO)" },
+        { "name": "ado_test_runs", "description": "List test runs with outcome counts (live from ADO)" },
+        { "name": "ado_test_results", "description": "List a test run's results with linked bugs (live from ADO)" },
+        { "name": "ado_wiki_show", "description": "Read a wiki page or list page paths, any project (live from ADO)" },
+        { "name": "ado_wiki_update", "description": "Replace a wiki page, ETag-guarded, with a dry-run diff" },
         { "name": "ado_fetch", "description": "Fetch specific work items by ID into local store" },
         { "name": "ado_create", "description": "Create a new work item in Azure DevOps" },
         { "name": "ado_update", "description": "Update an existing work item" },

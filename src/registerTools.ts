@@ -261,6 +261,172 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
     },
   );
 
+  // ── Test Plans and wiki pages (live, ado-search >= 1.19) ──
+
+  const PROJECT_OPT = z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Azure DevOps project name (default: the configured project)");
+
+  async function liveJson(args: string[], project?: string) {
+    if (project) args.push("--project", project);
+    args.push("--json");
+    try {
+      const result = await runAdoSearch(config, args, { timeout: 300_000 });
+      if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
+      return toMcpResult(JSON.parse(result.stdout));
+    } catch (err) {
+      return toMcpError(String(err));
+    }
+  }
+
+  server.tool(
+    "ado_test_plans",
+    "List Azure Test Plans live: id, name, state, owner, area, iteration, start/end dates, root suite id.",
+    {
+      project: PROJECT_OPT,
+      owner: z.string().min(1).optional().describe("Keep plans whose owner name or email contains this text"),
+      active: z.boolean().default(false).describe("Only active plans"),
+    },
+    async (params) => {
+      const args = ["test-plans"];
+      if (params.owner) args.push("--owner", params.owner);
+      if (params.active) args.push("--active");
+      return liveJson(args, params.project);
+    },
+  );
+
+  server.tool(
+    "ado_test_suites",
+    "List a test plan's suites live, depth-first with depth and path: type (staticTestSuite, " +
+      "requirementTestSuite, dynamicTestSuite), linked requirement id, query, default testers.",
+    {
+      plan_id: z.number().int().describe("Test plan ID"),
+      project: PROJECT_OPT,
+    },
+    async (params) => liveJson(["test-suites", String(params.plan_id)], params.project),
+  );
+
+  server.tool(
+    "ado_test_cases",
+    "List the test cases in one suite live: steps as {action, expected} (shared steps as {shared_steps: id}), " +
+      "parameters, tester/configuration assignments and the requested fields.",
+    {
+      plan_id: z.number().int().describe("Test plan ID"),
+      suite_id: z.number().int().describe("Test suite ID"),
+      fields: z
+        .array(z.string().min(1))
+        .optional()
+        .describe(
+          "Field reference names (default: title, state, created by/date, assignee, area, tags, priority, " +
+            "automation status, steps, parameters)",
+        ),
+      project: PROJECT_OPT,
+    },
+    async (params) => {
+      const args = ["test-cases", String(params.plan_id), String(params.suite_id)];
+      for (const f of params.fields ?? []) args.push("--field", f);
+      return liveJson(args, params.project);
+    },
+  );
+
+  server.tool(
+    "ado_test_points",
+    "List the test points in one suite live: test case, configuration, tester, latest outcome, last run id/date, run by.",
+    {
+      plan_id: z.number().int().describe("Test plan ID"),
+      suite_id: z.number().int().describe("Test suite ID"),
+      project: PROJECT_OPT,
+    },
+    async (params) =>
+      liveJson(["test-points", String(params.plan_id), String(params.suite_id)], params.project),
+  );
+
+  server.tool(
+    "ado_test_runs",
+    "List test runs live: name, state, manual/automated, owner, dates, passed/total, unanalyzed, n/a, incomplete.",
+    {
+      plan_id: z.number().int().optional().describe("Only runs of this test plan"),
+      limit: z.number().int().min(1).optional().describe("Stop after this many runs"),
+      project: PROJECT_OPT,
+    },
+    async (params) => {
+      const args = ["test-runs"];
+      if (params.plan_id) args.push("--plan", String(params.plan_id));
+      if (params.limit) args.push("--limit", String(params.limit));
+      return liveJson(args, params.project);
+    },
+  );
+
+  server.tool(
+    "ado_test_results",
+    "List one test run's results live: test case, outcome, configuration, tester, date, comment/error, linked bug ids.",
+    {
+      run_id: z.number().int().describe("Test run ID"),
+      project: PROJECT_OPT,
+    },
+    async (params) => liveJson(["test-results", String(params.run_id)], params.project),
+  );
+
+  server.tool(
+    "ado_wiki_show",
+    "Read a wiki page's markdown live from any project, or list the wiki's page paths when path is omitted.",
+    {
+      path: z.string().min(1).optional().describe("Page path, e.g. '/QA SOP' (omit to list page paths)"),
+      wiki: z.string().min(1).optional().describe("Wiki name (default: the project's only wiki)"),
+      project: PROJECT_OPT,
+    },
+    async (params) => {
+      const args = ["wiki-show"];
+      if (params.path) args.push(params.path);
+      if (params.wiki) args.push("--wiki", params.wiki);
+      if (params.project) args.push("--project", params.project);
+      try {
+        const result = await runAdoSearch(config, args, { timeout: 120_000 });
+        if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
+        return toMcpText(result.stdout);
+      } catch (err) {
+        return toMcpError(String(err));
+      }
+    },
+  );
+
+  server.tool(
+    "ado_wiki_update",
+    "Replace a wiki page's markdown. Reads the live page first and sends its ETag (If-Match), so a page " +
+      "changed in between is refused. Use dry_run first: it returns the unified diff and changes nothing.",
+    {
+      path: z.string().min(1).describe("Page path, e.g. '/QA SOP'"),
+      content: z.string().describe("Full new markdown content of the page"),
+      wiki: z.string().min(1).optional().describe("Wiki name (default: the project's only wiki)"),
+      project: PROJECT_OPT,
+      comment: z.string().min(1).optional().describe("Revision comment stored with the change"),
+      create: z.boolean().default(false).describe("Create the page if it does not exist"),
+      dry_run: z.boolean().default(false).describe("Return the diff against the live page only"),
+    },
+    async (params) => {
+      const dir = await mkdtemp(join(tmpdir(), "ado-search-mcp-"));
+      try {
+        const file = join(dir, "page.md");
+        await writeFile(file, params.content, "utf8");
+        const args = ["wiki-update", params.path, file];
+        if (params.wiki) args.push("--wiki", params.wiki);
+        if (params.project) args.push("--project", params.project);
+        if (params.comment) args.push("--comment", params.comment);
+        if (params.create) args.push("--create");
+        if (params.dry_run) args.push("--dry-run");
+        const result = await runAdoSearch(config, args, { timeout: 120_000 });
+        if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
+        return toMcpText(cliOutput(result));
+      } catch (err) {
+        return toMcpError(String(err));
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
   server.tool(
     "ado_fetch",
     "Fetch specific work items by ID from Azure DevOps and add to local store",
