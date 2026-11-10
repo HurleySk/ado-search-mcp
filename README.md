@@ -22,6 +22,7 @@ MCP server that wraps the [ado-search](https://github.com/HurleySk/ado-search) C
 | `ado_test_results` | List a test run's results with linked bugs (live from ADO) |
 | `ado_wiki_show` | Read a wiki page or list page paths, any project (live from ADO) |
 | `ado_wiki_update` | Replace a wiki page, ETag-guarded, with a dry-run diff |
+| `ado_analytics` | Run a read-only Analytics OData query across all pages (live from ADO) |
 | `ado_fetch` | Fetch specific work items by ID into local store |
 | `ado_create` | Create a new work item |
 | `ado_update` | Update an existing work item |
@@ -41,6 +42,8 @@ MCP server that wraps the [ado-search](https://github.com/HurleySk/ado-search) C
 The `ado_test_*` tools read Azure Test Plans live and return JSON; each takes an optional `project` (ado-search >= 1.19). `ado_test_suites` lists suites depth-first with type, linked requirement and query; `ado_test_cases` returns steps as `{action, expected}` with shared steps as `{shared_steps: id}`, plus parameters and tester/configuration assignments; `ado_test_results` includes linked bug ids.
 
 `ado_wiki_show` reads one page's markdown (or lists page paths) from any project's wiki. `ado_wiki_update` replaces a page with `content`: it reads the live page first and sends its ETag with `If-Match`, so a page changed in between is refused. `dry_run` returns the unified diff and writes nothing; `create` allows a new page; `comment` is stored with the revision (ado-search >= 1.19).
+
+`ado_analytics` runs a read-only Analytics OData query (`analytics.dev.azure.com/{org}[/{project}]/_odata/v4.0-preview/{entity}`) and follows `@odata.nextLink` to the last page or `max_rows`. `query` is the raw OData query string, e.g. `$select=WorkItemId,Title&$filter=WorkItemType eq 'Bug'` or `$apply=.../groupby(...)`; path literals take single backslashes. Without `project` the query is organization-level. Rows come back inline, capped at 200 with a `truncated` note; with `out_file` the CLI writes `{"value": [...]}` there and the tool returns the row count and the first 3 rows. An invalid query returns Analytics' HTTP status and message (ado-search >= 1.20).
 
 ## Prerequisites
 

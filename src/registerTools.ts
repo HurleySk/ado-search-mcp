@@ -1,6 +1,6 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { AdoSearchConfig } from "./config.js";
@@ -423,6 +423,74 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
         return toMcpError(String(err));
       } finally {
         await rm(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  // ── Analytics OData (live, read-only, ado-search >= 1.20) ──
+
+  const ANALYTICS_INLINE_ROWS = 200;
+
+  server.tool(
+    "ado_analytics",
+    "Run a read-only Azure DevOps Analytics OData query live (analytics.dev.azure.com, v4.0-preview) and return " +
+      "the rows, following @odata.nextLink across all pages. Inline results are capped at " +
+      `${ANALYTICS_INLINE_ROWS} rows; pass out_file to keep them all. Aggregate on the server ($apply) or ` +
+      "narrow with $filter/$select for large entity sets.",
+    {
+      entity: z
+        .string()
+        .min(1)
+        .describe("Entity set, e.g. WorkItems, WorkItemSnapshot, Iterations, Areas, Projects, Teams, Users"),
+      query: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          "Raw OData query string, e.g. \"$select=WorkItemId,Title&$filter=WorkItemType eq 'Bug'\" or " +
+            "\"$apply=filter(State ne 'Closed')/groupby((WorkItemType),aggregate($count as Count))\". " +
+            "Path literals take single backslashes: startswith(IterationPath,'ALM\\OM Sprint').",
+        ),
+      project: z
+        .string()
+        .min(1)
+        .optional()
+        .describe("Project name (omit for an organization-level query; the configured project is not used)"),
+      out_file: z
+        .string()
+        .min(1)
+        .optional()
+        .describe('Write {"value": [all rows]} to this JSON file and return the row count plus the first 3 rows'),
+      max_rows: z.number().int().min(1).optional().describe("Stop after this many rows"),
+    },
+    async (params) => {
+      const tempDir = params.out_file ? undefined : await mkdtemp(join(tmpdir(), "ado-search-mcp-"));
+      const outFile = params.out_file ? resolve(params.out_file) : join(tempDir!, "analytics.json");
+      try {
+        const args = ["analytics", params.entity, "--out", outFile];
+        if (params.query) args.push("--query", params.query);
+        if (params.project) args.push("--project", params.project);
+        if (params.max_rows) args.push("--max-rows", String(params.max_rows));
+        const result = await runAdoSearch(config, args, { timeout: 300_000 });
+        if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
+        const rows = (JSON.parse(await readFile(outFile, "utf8")) as { value: unknown[] }).value;
+        const summary = result.stderr.trim();
+        if (params.out_file) {
+          return toMcpResult({ summary, rows: rows.length, out_file: outFile, first_rows: rows.slice(0, 3) });
+        }
+        const shown = rows.slice(0, ANALYTICS_INLINE_ROWS);
+        return toMcpResult({
+          summary,
+          rows: rows.length,
+          ...(shown.length < rows.length
+            ? { truncated: `Showing the first ${shown.length} of ${rows.length} rows; pass out_file to get them all.` }
+            : {}),
+          value: shown,
+        });
+      } catch (err) {
+        return toMcpError(String(err));
+      } finally {
+        if (tempDir) await rm(tempDir, { recursive: true, force: true });
       }
     },
   );
