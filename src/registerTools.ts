@@ -427,6 +427,32 @@ export function registerTools(server: McpServer, config: AdoSearchConfig): void 
     },
   );
 
+  server.tool(
+    "ado_wiki_attach",
+    "Upload a local file (an image, typically) as a wiki attachment and return its path, " +
+      "/.attachments/NAME (URL-encoded), to embed in a page as ![alt](/.attachments/NAME). " +
+      "A name already taken in the wiki is refused, never overwritten; pass name to use another (ado-search >= 1.21).",
+    {
+      file_path: z.string().min(1).describe("Local file to upload, e.g. 'C:/temp/flow.png'"),
+      name: z.string().min(1).optional().describe("Attachment name (default: the file's name)"),
+      wiki: z.string().min(1).optional().describe("Wiki name (default: the project's only wiki)"),
+      project: PROJECT_OPT,
+    },
+    async (params) => {
+      const args = ["wiki-attach", resolve(params.file_path)];
+      if (params.name) args.push("--name", params.name);
+      if (params.wiki) args.push("--wiki", params.wiki);
+      if (params.project) args.push("--project", params.project);
+      try {
+        const result = await runAdoSearch(config, args, { timeout: 120_000 });
+        if (result.exitCode !== 0) return toMcpError(result.stderr || result.stdout);
+        return toMcpText(cliOutput(result));
+      } catch (err) {
+        return toMcpError(String(err));
+      }
+    },
+  );
+
   // ── Analytics OData (live, read-only, ado-search >= 1.20) ──
 
   const ANALYTICS_INLINE_ROWS = 200;
